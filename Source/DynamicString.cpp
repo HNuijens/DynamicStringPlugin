@@ -25,16 +25,24 @@ void DynamicString::setFs(double Fs)
     k = 1. / Fs;
 }
 
-void DynamicString::setGridSize(double frequency)
+void DynamicString::setGrid(NamedValueSet& parameters)
 {
-    c = 2. * L * frequency;
-    h = sqrt(c * c * k * k + 4 * sigma1 * k);
+    // Fetch parameters
+    f0 = *parameters.getVarPointer("f0");
+    L = *parameters.getVarPointer("L");
+    sig0 = *parameters.getVarPointer("sig0");
+    sig1 = *parameters.getVarPointer("sig1");
+
+    c = 2.0f * L * f0;
+    h = sqrt(c * c * k * k + 4.0f * sig1 * k);
     N = L / h;
 
     if (floor(N) - floor(N1) > 1 || floor(N) - floor(N1) < -1)
     {
         resetGrid();
     }
+
+    getSchemeWeights();
 }
 void DynamicString::resetGrid()
 {
@@ -97,19 +105,34 @@ void DynamicString::exciteSystem(double width, double excitationLoc)
     }
 }
 
-void DynamicString::processSample()
+double DynamicString::getNextSample(float outputPos)
 {
-    alpha = N - floor(N);
+    alpha = N - floor(N); // calc distance between two systems
 
     // Check if there is a need to add/delete grid points
     if (floor(N) > floor(N1)) addPoint();
     else if (floor(N) < floor(N1)) removePoint();
 
     getVirtualGridPoints();
-    getSchemeWeights();
+    //getSchemeWeights();
     getConnectionForce();
     calculateScheme();
+    
+    double out;
+
+    // Fetch output from right system
+    int pos = static_cast<int>(round(outputPos * N));
+    if (pos >= M)
+    {
+        pos = pos - M;
+        out = w[1][pos];
+    }
+
+    else out = u[1][pos];
+
     updateStates();
+
+    return out; 
 }
 
 void DynamicString::addPoint()
@@ -196,11 +219,11 @@ void DynamicString::getVirtualGridPoints()
 
 void DynamicString::getSchemeWeights()
 {
-    D = 1. + sigma0 * k;
+    D = 1. + sig0 * k;
     C1 = 2.;
-    C2 = sigma0 * k - 1.;
+    C2 = sig0 * k - 1.;
     C3 = (c * c * k * k) / (h * h);
-    C4 = (2 * sigma1 * k) / (h * h);
+    C4 = (2 * sig1 * k) / (h * h);
     C5 = (k * k / h);
 
     C1 = C1 / D;
@@ -213,7 +236,7 @@ void DynamicString::getSchemeWeights()
 void DynamicString::getConnectionForce()
 {
     r1 = (omegaS * omegaS - (sigmaS / k)) / (omegaS * omegaS + (sigmaS / k));
-    r2 = (h * (1 + sigma0 * k) * (1 - alpha) * (omegaS * omegaS + (sigmaS / k))) / (2 * h * (1 + sigma0 * k) * alpha + 2 * k * k * (1 - alpha) * (omegaS * omegaS + (sigmaS / k)));
+    r2 = (h * (1 + sig0 * k) * (1 - alpha) * (omegaS * omegaS + (sigmaS / k))) / (2 * h * (1 + sig0 * k) * alpha + 2 * k * k * (1 - alpha) * (omegaS * omegaS + (sigmaS / k)));
     uMI = C1 * u[1][M - 1] + C2 * u[2][M - 1] + C3 * (uM1 - 2 * u[1][M - 1] + u[1][M - 2]) + C4 * (uM1 - 2 * u[1][M - 1] + u[1][M - 2] - uPrevM1 + 2 * u[2][M - 1] - u[2][M - 2]);
     w0I = C1 * w[1][0] + C2 * w[2][0] + C3 * (w[1][1] - 2 * w[1][0] + wMin1) + C4 * (w[1][1] - 2 * w[1][0] + wMin1 - w[2][1] + 2 * w[2][0] - wPrevMin1);
     Fc = r2 * (w0I - uMI + r1 * (w[2][0] - u[2][M - 1]));
@@ -246,18 +269,6 @@ void DynamicString::calculateScheme()
     }
 }
 
-double DynamicString::getOutput(double ratio)
-{
-
-    int pos = static_cast<int>(round(ratio * N));
-    if (pos >= M)
-    {
-        pos = pos - M;
-        return w[1][pos];
-    }
-    else return u[1][pos];
-}
-
 void DynamicString::updateStates()
 {
     if (index < 3) index++;
@@ -277,40 +288,4 @@ void DynamicString::updateStates()
 
     wPrevMin1 = wMin1;
     uPrevM1 = uM1;
-}
-
-void DynamicString::setDamping(double sigma0, double sigma1)
-{
-    this->sigma0 = sigma0;
-    this->sigma1 = sigma1;
-}
-
-vector<double> DynamicString::getStringState(int maxLength)
-{
-    vector<double> U = uStates[1];
-    U.insert(U.end(), wStates[1].begin(), wStates[1].end());
-    if (U.size() <= maxLength) return U;
-    else
-    {
-        vector<double> newU(maxLength);
-        double ratio = U.size() / static_cast<double>(maxLength);
-        int whole = floor(ratio);
-        double left = ratio - whole;
-        steps = floor(10 / (left * 10));
-        int ii = 0;
-        int iU = 0;
-        if (ii == steps) // increment extra every now and then
-        {
-            iU++;
-            ii = 0;
-        }
-        for (int i = 0; i < maxLength; i++)
-        {
-            newU[i] = U[iU];
-            iU += whole;
-            ii++;
-        }
-        return newU;
-    }
-
 }

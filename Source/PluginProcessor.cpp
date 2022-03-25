@@ -22,6 +22,23 @@ DynamicStringPluginAudioProcessor::DynamicStringPluginAudioProcessor()
                        )
 #endif
 {
+    addParameter(fundFreq = new AudioParameterFloat("fundamentalFreq", // parameter ID
+        "Fundamental Frequency", // parameter name
+        20.0f,          // minimum value
+        10000.0f,       // maximum value
+        220.0f));          // default value
+
+    addParameter(modulation = new AudioParameterFloat("modulation", // parameter ID
+        "modulation", // parameter name
+        -12.0f,          // minimum value
+        12.0f,       // maximum value
+        0.0f));          // default value
+
+
+    addParameter(excited = new AudioParameterBool("excited", // parameter ID
+        "excited", // parameter name
+        false   // default value
+    )); // default value
 }
 
 DynamicStringPluginAudioProcessor::~DynamicStringPluginAudioProcessor()
@@ -93,8 +110,20 @@ void DynamicStringPluginAudioProcessor::changeProgramName (int index, const juce
 //==============================================================================
 void DynamicStringPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    
+    dynamicString.setFs(sampleRate);
+    
+    rootNote = *fundFreq;
+    mod = *modulation; 
+    f0 = rootNote * powf(2.f, mod / 12.0);
+
+    parameters.set("L", 1.0);
+    parameters.set("f0", f0);
+    parameters.set("sig0", sig0);
+    parameters.set("sig1", sig1);
+
+    dynamicString.setGrid(parameters);
+
 }
 
 void DynamicStringPluginAudioProcessor::releaseResources()
@@ -135,33 +164,51 @@ void DynamicStringPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+ 
+    if (*excited)
+    {
+        dynamicString.exciteSystem(15, 0.3f);
+        *excited = false;
+    }
+
+    if (mod != *modulation || *fundFreq != rootNote)
+    {
+        rootNote = *fundFreq;
+        mod = *modulation;
+        f0 = rootNote * powf(2.f, mod / 12.0);
+        parameters.set("f0", f0);
+    }
+   
+
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
 
-        // ..do something to the data...
+        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        {
+            auto outL = buffer.getWritePointer(0);
+            auto outR = buffer.getWritePointer(1);
+
+            float out = 0.f;
+
+            dynamicString.setGrid(parameters);
+            out = dynamicString.getNextSample(0.2);
+
+            out = limit(out, -1.0f, 1.0f);
+            outL[n] = out;
+            outR[n] = out;
+        }
     }
 }
 
 //==============================================================================
 bool DynamicStringPluginAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return false; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* DynamicStringPluginAudioProcessor::createEditor()
@@ -188,4 +235,11 @@ void DynamicStringPluginAudioProcessor::setStateInformation (const void* data, i
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new DynamicStringPluginAudioProcessor();
+}
+
+double DynamicStringPluginAudioProcessor::limit(double sample, double min, double max)
+{
+    if (sample < min) return min;
+    else if (sample > max) return max;
+    else return sample; 
 }

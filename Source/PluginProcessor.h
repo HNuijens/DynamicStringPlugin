@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "DynamicString.h"
 
 //==============================================================================
 /**
@@ -53,7 +54,25 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+
+
 private:
+    NamedValueSet parameters;
+
+    DynamicString dynamicString; 
+
+    AudioParameterFloat* fundFreq; 
+    AudioParameterFloat* modulation;
+    AudioParameterBool* excited; 
+    
+    double mod = 0.0f; 
+    double f0; 
+    double rootNote; 
+    double sig0 = 0.01f;
+    double sig1 = 0.01f; 
+
+    double limit(double sample, double min, double max);
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicStringPluginAudioProcessor)
 };

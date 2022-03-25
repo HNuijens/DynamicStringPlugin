@@ -26,16 +26,9 @@ public:
 
     // Public Methods:
     void setFs(double Fs);
-    void setGridSize(double frequency);  // set grid size N
+    void setGrid(NamedValueSet& parameters);  // set grid size N
     void exciteSystem(double width, double excitationLoc);
-    void processSample();
-    double getOutput(double ratio);              //
-    void setDamping(double sigma0, double sigma1);
-    vector<double> getStringState(int maxLength);
-
-    // Damping
-    double sigma0 = 0.1; // Frequency independent damping
-    double sigma1 = 0.01; // Frequency dependent damping
+    double getNextSample(float outputPos);              
 
 private:
 
@@ -52,14 +45,18 @@ private:
     // System defined:
     double Fs = 48000.f;         // Sample rate 
     double k;                    // Descrete time grid spacing
-
-    // User defined:
+    double f0;                   // Fundamental Frequency
+    
+                                 // User defined:
     double L = 1.;               // String length
     double c;                    // Dynamic wave speed
     double h;                    // Grid spacing
     double N = 0;                // Current grid size
     double N1 = 0;               // Previous grid size
     double alpha;                // Distance between the systems
+
+    // damping
+    double sig0, sig1; 
 
     int M;                       // Length of left system
     int Mw;                      // lengtg of right system
