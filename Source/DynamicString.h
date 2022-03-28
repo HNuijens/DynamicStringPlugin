@@ -27,8 +27,10 @@ public:
     // Public Methods:
     void setFs(double Fs);
     void setGrid(NamedValueSet& parameters);  // set grid size N
+    void setDynamicGrid(double f0);
     void exciteSystem(double width, double excitationLoc);
     double getNextSample(float outputPos);              
+    void setMaxChange();
 
 private:
 
@@ -37,7 +39,6 @@ private:
     void removePoint();
     void getVirtualGridPoints();
     void getSchemeWeights();
-    void getConnectionForce();
     void calculateScheme();
     void updateStates();
     void resetGrid();
@@ -62,11 +63,11 @@ private:
     int Mw;                      // lengtg of right system
 
     // State vectors:
-    vector<vector<double>> uStates;      // State vectors of left system
-    vector<double*> u;                   // Pointer to the left state vectors
+    vector<vector<double>> u;      // State vectors of left system
+    //vector<double*> u;                   // Pointer to the left state vectors
 
-    vector<vector<double>> wStates;      // State vectors of right system
-    vector<double*> w;                   // Pointer to the right state vectors 
+    vector<vector<double>> w;      // State vectors of right system
+    //vector<double*> w;                   // Pointer to the right state vectors 
 
     //vector<double> U;                    // Full string
     //vector<double> newU;                 // Resized string
@@ -99,11 +100,15 @@ private:
     double C4;
     double C5;
 
+
+    double maxNChange = 1. / 10.;
+    double maxChangeF0;
+
     // Output
-    double out;
+    //double out;
 
 
     int index = 0;  // Keeping track of pointer switching
-    int steps;      // steps for resizing U
+
 };
 

@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="ajLzBW" name="DynamicStringPlugin" projectType="audioplug"
               useAppConfig="1" addUsingNamespaceToJuceHeader="1" displaySplashScreen="1"
-              jucerFormatVersion="1">
+              jucerFormatVersion="1" pluginFormats="buildAU,buildStandalone,buildUnity,buildVST3">
   <MAINGROUP id="b5JTZC" name="DynamicStringPlugin">
     <GROUP id="{BF011A93-6F2C-9CF8-715A-3B7DE52A16AF}" name="Source">
       <FILE id="bJ55Yr" name="DynamicString.cpp" compile="1" resource="0"

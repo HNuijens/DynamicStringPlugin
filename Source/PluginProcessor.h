@@ -62,14 +62,14 @@ private:
     DynamicString dynamicString; 
 
     AudioParameterFloat* fundFreq; 
-    AudioParameterFloat* modulation;
+    //AudioParameterFloat* modulation;
     AudioParameterBool* excited; 
     
     double mod = 0.0f; 
     double f0; 
     double rootNote; 
-    double sig0 = 0.01f;
-    double sig1 = 0.01f; 
+    double sig0 = 0.5f;
+    double sig1 = 0.02f; 
 
     double limit(double sample, double min, double max);
 

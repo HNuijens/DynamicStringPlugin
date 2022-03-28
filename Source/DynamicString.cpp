@@ -24,6 +24,13 @@ void DynamicString::setFs(double Fs)
     this->Fs = Fs;
     k = 1. / Fs;
 }
+void DynamicString::setMaxChange()
+{
+    double maxChangeH = maxNChange;
+    double maxChangeC = sqrt((maxNChange * maxNChange / k * k)  - 4.0f * sig1 * k);
+
+    maxChangeF0 = maxChangeC / (2.0 * L);
+}
 
 void DynamicString::setGrid(NamedValueSet& parameters)
 {
@@ -35,31 +42,49 @@ void DynamicString::setGrid(NamedValueSet& parameters)
 
     c = 2.0f * L * f0;
     h = sqrt(c * c * k * k + 4.0f * sig1 * k);
-    N = L / h;
+    N = L / h; 
 
     if (floor(N) - floor(N1) > 1 || floor(N) - floor(N1) < -1)
     {
         resetGrid();
     }
 
+    setMaxChange();
     getSchemeWeights();
 }
+
+void DynamicString::setDynamicGrid(double newF0)
+{
+    if (newF0 < f0 - maxChangeF0)
+    {
+        f0 -= maxChangeF0;
+    }
+    else if(newF0 > f0 + maxChangeF0) f0 += maxChangeF0;
+    else {f0 = newF0; }
+
+    c = 2.0f * L * f0;
+    h = sqrt(c * c * k * k + 4.0f * sig1 * k);
+    N = L / h; 
+
+    getSchemeWeights();
+}
+
 void DynamicString::resetGrid()
 {
     M = ceil(0.5 * L / h);
     Mw = floor(0.5 * L / h);
 
-    uStates = vector<vector<double>>(3, vector<double>(M, 0));
-    wStates = vector<vector<double>>(3, vector<double>(Mw, 0));
+    u = vector<vector<double>>(3, vector<double>(M, 0));
+    w = vector<vector<double>>(3, vector<double>(Mw, 0));
 
-    u.resize(3, nullptr);
-    w.resize(3, nullptr);
+   // u.resize(3, nullptr);
+    //w.resize(3, nullptr);
 
-    for (int n = 0; n < 3; n++)
+    /*for (int n = 0; n < 3; n++)
     {
         u[n] = &uStates[n][0];
         w[n] = &wStates[n][0];
-    }
+    }*/
 
     N1 = N;
 
@@ -114,8 +139,8 @@ double DynamicString::getNextSample(float outputPos)
     else if (floor(N) < floor(N1)) removePoint();
 
     getVirtualGridPoints();
-    getSchemeWeights();
-    getConnectionForce();
+    //getSchemeWeights();
+    //getConnectionForce();
     calculateScheme();
     
     double out;
@@ -149,15 +174,16 @@ void DynamicString::addPoint()
     if (static_cast<int>(floor(N)) % 2 == 0)
     {
         // Add to the start of w
-        wStates[0].insert(wStates[0].begin(), 0);
-        wStates[1].insert(wStates[1].begin(), 0);
-        wStates[2].insert(wStates[2].begin(), 0);
+        w[0].insert(w[0].begin(), 0);
+        w[1].insert(w[1].begin(), 0);
+        w[2].insert(w[2].begin(), 0);
 
-        for (int n = 0; n < 3; n++)
+       /* for (int n = 0; n < 3; n++)
         {
             w[n] = &wStates[(((index + n) % 3) + 3) % 3][0];
-        }
+        }*/
 
+        w[0][0] = I3Flipped[0] * u[1][M - 2] + I3Flipped[1] * u[1][M - 1] + I3Flipped[2] * w[1][1] + I3Flipped[3] * w[1][2];
         w[1][0] = I3Flipped[0] * u[1][M - 2] + I3Flipped[1] * u[1][M - 1] + I3Flipped[2] * w[1][1] + I3Flipped[3] * w[1][2];
         w[2][0] = I3Flipped[0] * u[2][M - 2] + I3Flipped[1] * u[2][M - 1] + I3Flipped[2] * w[2][1] + I3Flipped[3] * w[2][2];
 
@@ -166,15 +192,16 @@ void DynamicString::addPoint()
     else // Floored N is odd, add the to left system
     {
         // Add to the end of u
-        uStates[0].push_back(0);
-        uStates[1].push_back(0);
-        uStates[2].push_back(0);
+        u[0].push_back(0);
+        u[1].push_back(0);
+        u[2].push_back(0);
 
-        for (int n = 0; n < 3; n++)
+       /*for (int n = 0; n < 3; n++)
         {
             u[n] = &uStates[(((index + n) % 3) + 3) % 3][0];
-        }
+        }*/
 
+        u[0][M] = I3[0] * u[1][M - 2] + I3[1] * u[1][M - 1] + I3[2] * w[1][0] + I3[3] * w[1][1];
         u[1][M] = I3[0] * u[1][M - 2] + I3[1] * u[1][M - 1] + I3[2] * w[1][0] + I3[3] * w[1][1];
         u[2][M] = I3[0] * u[2][M - 2] + I3[1] * u[2][M - 1] + I3[2] * w[2][0] + I3[3] * w[2][1];
 
@@ -188,18 +215,18 @@ void DynamicString::removePoint()
     if (static_cast<int>(floor(N)) % 2 == 0)
     {
         // Remove from right side of u
-        uStates[0].pop_back();
-        uStates[1].pop_back();
-        uStates[2].pop_back();
+        u[0].pop_back();
+        u[1].pop_back();
+        u[2].pop_back();
 
         M--;
     }
     else // Floored N is odd, remove from left system
     {
         // Remove from left side of w
-        wStates[0].erase(wStates[0].begin());
-        wStates[1].erase(wStates[1].begin());
-        wStates[2].erase(wStates[2].begin());
+        w[0].erase(w[0].begin());
+        w[1].erase(w[1].begin());
+        w[2].erase(w[2].begin());
 
         Mw--;
     }
@@ -233,22 +260,13 @@ void DynamicString::getSchemeWeights()
     C5 = C5 / D;
 }
 
-void DynamicString::getConnectionForce()
-{
-    r1 = (omegaS * omegaS - (sigmaS / k)) / (omegaS * omegaS + (sigmaS / k));
-    r2 = (h * (1 + sig0 * k) * (1 - alpha) * (omegaS * omegaS + (sigmaS / k))) / (2 * h * (1 + sig0 * k) * alpha + 2 * k * k * (1 - alpha) * (omegaS * omegaS + (sigmaS / k)));
-    uMI = C1 * u[1][M - 1] + C2 * u[2][M - 1] + C3 * (uM1 - 2 * u[1][M - 1] + u[1][M - 2]) + C4 * (uM1 - 2 * u[1][M - 1] + u[1][M - 2] - uPrevM1 + 2 * u[2][M - 1] - u[2][M - 2]);
-    w0I = C1 * w[1][0] + C2 * w[2][0] + C3 * (w[1][1] - 2 * w[1][0] + wMin1) + C4 * (w[1][1] - 2 * w[1][0] + wMin1 - w[2][1] + 2 * w[2][0] - wPrevMin1);
-    Fc = r2 * (w0I - uMI + r1 * (w[2][0] - u[2][M - 1]));
-}
-
 void DynamicString::calculateScheme()
 {
     for (int m = 1; m < M; m++)
     {
         if (m == M - 1)
         {
-            u[0][m] = C1 * u[1][m] + C2 * u[2][m] + C3 * (uM1 - 2 * u[1][m] + u[1][m - 1]) + C4 * (uM1 - 2 * u[1][m] + u[1][m - 1] - uPrevM1 + 2 * u[2][m] - u[2][m - 1]) + C5 * Fc;
+            u[0][m] = C1 * u[1][m] + C2 * u[2][m] + C3 * (uM1 - 2 * u[1][m] + u[1][m - 1]) + C4 * (uM1 - 2 * u[1][m] + u[1][m - 1] - uPrevM1 + 2 * u[2][m] - u[2][m - 1]);
         }
         else
         {
@@ -260,7 +278,7 @@ void DynamicString::calculateScheme()
     {
         if (m == 0)
         {
-            w[0][m] = C1 * w[1][m] + C2 * w[2][m] + C3 * (w[1][m + 1] - 2 * w[1][m] + wMin1) + C4 * (w[1][m + 1] - 2 * w[1][m] + wMin1 - w[2][m + 1] + 2 * w[2][m] - wPrevMin1) - C5 * Fc;
+            w[0][m] = C1 * w[1][m] + C2 * w[2][m] + C3 * (w[1][m + 1] - 2 * w[1][m] + wMin1) + C4 * (w[1][m + 1] - 2 * w[1][m] + wMin1 - w[2][m + 1] + 2 * w[2][m] - wPrevMin1);
         }
         else
         {
@@ -271,7 +289,7 @@ void DynamicString::calculateScheme()
 
 void DynamicString::updateStates()
 {
-    if (index < 3) index++;
+  /*  if (index < 3) index++;
     else index = 0;
 
     double* uTmp = u[2];
@@ -283,7 +301,13 @@ void DynamicString::updateStates()
     w[2] = w[1];
     w[2] = w[1];
     w[1] = w[0];
-    w[0] = wTmp;
+    w[0] = wTmp;*/
+
+    u[2] = u[1];
+    u[1] = u[0];
+
+    w[2] = w[1];
+    w[1] = w[0];
 
     N1 = N;
 
