@@ -171,7 +171,7 @@ void DynamicStringPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& 
  
     if (*excited)
     {
-        dynamicString.exciteSystem(15, 0.3f);
+        dynamicString.exciteSystem(15.0f, 0.3f);
         *excited = false;
     }
 
@@ -184,25 +184,22 @@ void DynamicStringPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     }
    
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
-        auto* channelData = buffer.getWritePointer (channel);
+        auto outL = buffer.getWritePointer(0);
+        auto outR = buffer.getWritePointer(1);
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
-        {
-            auto outL = buffer.getWritePointer(0);
-            auto outR = buffer.getWritePointer(1);
+        float out = 0.f;
 
-            float out = 0.f;
+        dynamicString.setGrid(parameters);
+        out = dynamicString.getNextSample(0.2f);
 
-            dynamicString.setGrid(parameters);
-            out = dynamicString.getNextSample(0.2);
-
-            out = limit(out, -1.0f, 1.0f);
-            outL[n] = out;
-            outR[n] = out;
-        }
+        out = limit(out, -1.0f, 1.0f);
+        outL[n] = out;
+        outR[n] = out;
     }
+    
 }
 
 //==============================================================================

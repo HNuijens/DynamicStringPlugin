@@ -71,7 +71,7 @@ void DynamicString::exciteSystem(double width, double excitationLoc)
 {
     //// Raised cosine excitation ////
     // width (in grid points) of the excitation
-    // make sure we’re not going out of bounds at the left boundary
+    // make sure weâ€™re not going out of bounds at the left boundary
     int switchVal = 0;
     int start = max(floor((N + 1) * excitationLoc) - floor(width * 0.5), 1.0);
     int startw = 0;
@@ -83,8 +83,8 @@ void DynamicString::exciteSystem(double width, double excitationLoc)
     // DBG(start);
     for (int l = 0; l < width; ++l)
     {
-        // make sure we’re not going out of bounds
-        // at the right boundary (this does ’cut off’
+        // make sure weâ€™re not going out of bounds
+        // at the right boundary (this does â€™cut offâ€™
         // the raised cosine)
         if (l + startw - switchVal > Mw - 1)
             break;
@@ -114,7 +114,7 @@ double DynamicString::getNextSample(float outputPos)
     else if (floor(N) < floor(N1)) removePoint();
 
     getVirtualGridPoints();
-    //getSchemeWeights();
+    getSchemeWeights();
     getConnectionForce();
     calculateScheme();
     
@@ -280,6 +280,7 @@ void DynamicString::updateStates()
     u[0] = uTmp;
 
     double* wTmp = w[2];
+    w[2] = w[1];
     w[2] = w[1];
     w[1] = w[0];
     w[0] = wTmp;
