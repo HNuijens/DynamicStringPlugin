@@ -62,7 +62,7 @@ private:
     DynamicString dynamicString; 
 
     AudioParameterFloat* fundFreq; 
-    //AudioParameterFloat* modulation;
+    AudioParameterFloat* modulation;
     AudioParameterBool* excited; 
     
     double mod = 0.0f; 

@@ -28,11 +28,11 @@ DynamicStringPluginAudioProcessor::DynamicStringPluginAudioProcessor()
         10000.0f,       // maximum value
         220.0f));          // default value
 
-    //addParameter(modulation = new AudioParameterFloat("modulation", // parameter ID
-    //    "modulation", // parameter name
-    //    -24.0f,          // minimum value
-    //    24.0f,       // maximum value
-    //    0.0f));          // default value
+    addParameter(modulation = new AudioParameterFloat("modulation", // parameter ID
+        "modulation", // parameter name
+        -24.0f,          // minimum value
+        24.0f,       // maximum value
+        0.0f));          // default value
 
 
     addParameter(excited = new AudioParameterBool("excited", // parameter ID
@@ -114,7 +114,7 @@ void DynamicStringPluginAudioProcessor::prepareToPlay (double sampleRate, int sa
     dynamicString.setFs(sampleRate);
     
     rootNote = *fundFreq;
-    //mod = *modulation; 
+    mod = *modulation; 
     f0 = rootNote * powf(2.f, mod / 12.0);
 
     parameters.set("L", 1.0);
@@ -175,19 +175,19 @@ void DynamicStringPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& 
         *excited = false;
     }
 
-    /*if (mod != *modulation)
+    if (mod != *modulation)
     {
         mod = *modulation;
         f0 = rootNote * powf(2.f, mod / 12.0);
         parameters.set("f0", f0);
-    }*/
+    }
 
     if (*fundFreq != rootNote)
     {
         rootNote = *fundFreq;
         f0 = rootNote * powf(2.f, mod / 12.0);
         parameters.set("f0", f0);
-       // dynamicString.setGrid(parameters);
+        dynamicString.setGrid(parameters);
     }
    
 
